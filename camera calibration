@@ -1,0 +1,56 @@
+import cv2
+import numpy as np
+import glob
+
+# === Settings ===
+CHECKERBOARD = (9, 6)  # number of internal corners (columns, rows)
+square_size = 1.0  # set the real-world size of a square (e.g., 1.0 for 1 cm)
+
+# === Prepare object points (0,0,0), (1,0,0), ..., (8,5,0) ===
+objp = np.zeros((CHECKERBOARD[1] * CHECKERBOARD[0], 3), np.float32)
+objp[:, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
+objp *= square_size
+
+objpoints = []  # 3D points in real world
+imgpoints = []  # 2D points in image plane
+
+# === Load all calibration images ===
+images = glob.glob('calibration_images/*.jpg')  # <-- update path if needed
+
+for fname in images:
+    img = cv2.imread(fname)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Find the checkerboard corners
+    ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
+
+    if ret:
+        objpoints.append(objp)
+        corners2 = cv2.cornerSubPix(
+            gray, corners, (11, 11), (-1, -1),
+            criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        )
+        imgpoints.append(corners2)
+
+        # Optional: draw and show the corners
+        cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
+        cv2.imshow('Corners', img)
+        cv2.waitKey(100)
+
+cv2.destroyAllWindows()
+
+# === Calibration ===
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+    objpoints, imgpoints, gray.shape[::-1], None, None
+)
+
+# === Results ===
+print("Camera matrix:\n", mtx)
+print("\nDistortion coefficients:\n", dist.ravel())
+print("\nReprojection error:")
+mean_error = 0
+for i in range(len(objpoints)):
+    imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+    error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
+    mean_error += error
+print(mean_error / len(objpoints))
