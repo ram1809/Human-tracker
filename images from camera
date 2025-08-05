@@ -1,0 +1,42 @@
+import cv2
+import os
+
+# === Settings ===
+output_dir = "captured_images"
+capture_key = ord('c')  # press 'c' to capture
+quit_key = ord('q')     # press 'q' to quit
+
+# Create output directory if it doesn't exist
+os.makedirs(output_dir, exist_ok=True)
+
+# Open the default camera (index 0)
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Cannot open camera")
+    exit()
+
+img_counter = 0
+
+print("Press 'c' to capture image, 'q' to quit.")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("Failed to grab frame")
+        break
+
+    cv2.imshow("Camera", frame)
+    key = cv2.waitKey(1)
+
+    if key == capture_key:
+        img_name = f"{output_dir}/image_{img_counter:03d}.jpg"
+        cv2.imwrite(img_name, frame)
+        print(f"Saved {img_name}")
+        img_counter += 1
+
+    elif key == quit_key:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
