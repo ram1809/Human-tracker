@@ -10,7 +10,7 @@ quit_key = ord('q')     # press 'q' to quit
 os.makedirs(output_dir, exist_ok=True)
 
 # Open the default camera (index 0)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(2)
 
 if not cap.isOpened():
     print("Error: Cannot open camera")
