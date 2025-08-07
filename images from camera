@@ -1,42 +1,77 @@
 import cv2
 import os
+import threading
 
-# === Settings ===
-output_dir = "captured_images"
-capture_key = ord('c')  # press 'c' to capture
-quit_key = ord('q')     # press 'q' to quit
+# === Camera device paths ===
+CAMERA_DEVICES = {
+    "Cam0": "/dev/video0",
+    "Cam1": "/dev/video2",
+    "Cam2": "/dev/video4"
+}
 
-# Create output directory if it doesn't exist
-os.makedirs(output_dir, exist_ok=True)
+# === Output folders ===
+OUTPUT_DIR = "captured_images"
+for cam_name in CAMERA_DEVICES:
+    os.makedirs(os.path.join(OUTPUT_DIR, cam_name), exist_ok=True)
 
-# Open the default camera (index 0)
-cap = cv2.VideoCapture(2)
+# === Global state ===
+frames = {}
+selected_camera = list(CAMERA_DEVICES.keys())[0]  # Default selected camera
+running = True
+img_counters = {name: 0 for name in CAMERA_DEVICES}
 
-if not cap.isOpened():
-    print("Error: Cannot open camera")
-    exit()
+# === Capture Thread Function ===
+def camera_thread(cam_name, device_path):
+    global frames, running
+    cap = cv2.VideoCapture(device_path)
+    if not cap.isOpened():
+        print(f"❌ Failed to open {device_path} ({cam_name})")
+        return
 
-img_counter = 0
+    while running:
+        ret, frame = cap.read()
+        if ret:
+            frames[cam_name] = frame
+    cap.release()
 
-print("Press 'c' to capture image, 'q' to quit.")
+# === Start Threads for Each Camera ===
+threads = []
+for name, path in CAMERA_DEVICES.items():
+    t = threading.Thread(target=camera_thread, args=(name, path), daemon=True)
+    t.start()
+    threads.append(t)
 
+print("✅ Cameras initialized")
+print("Press [1/2/3] to select camera")
+print("Press [c] to capture image from selected camera")
+print("Press [q] to quit")
+
+# === Main Display & Control Loop ===
 while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame")
+    frame = frames.get(selected_camera)
+    if frame is not None:
+        display = frame.copy()
+        cv2.putText(display, f"Selected: {selected_camera}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.imshow("Camera Viewer", display)
+
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('q'):
         break
+    elif key == ord('1'):
+        selected_camera = "Cam0"
+    elif key == ord('2'):
+        selected_camera = "Cam1"
+    elif key == ord('3'):
+        selected_camera = "Cam2"
+    elif key == ord(' ') and frame is not None:
+        img_idx = img_counters[selected_camera]
+        filename = os.path.join(OUTPUT_DIR, selected_camera, f"image_{img_idx:03d}.jpg")
+        cv2.imwrite(filename, frame)
+        print(f"📸 Saved: {filename}")
+        img_counters[selected_camera] += 1
 
-    cv2.imshow("Camera", frame)
-    key = cv2.waitKey(1)
-
-    if key == capture_key:
-        img_name = f"{output_dir}/image_{img_counter:03d}.jpg"
-        cv2.imwrite(img_name, frame)
-        print(f"Saved {img_name}")
-        img_counter += 1
-
-    elif key == quit_key:
-        break
-
-cap.release()
+# === Cleanup ===
+running = False
 cv2.destroyAllWindows()
