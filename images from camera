@@ -11,14 +11,20 @@ CAMERA_DEVICES = {
 
 # === Output folders ===
 OUTPUT_DIR = "captured_images"
-for cam_name in CAMERA_DEVICES:
-    os.makedirs(os.path.join(OUTPUT_DIR, cam_name), exist_ok=True)
+# Define camera pairs and create folders
+PAIR_FOLDERS = {
+    "Cam0_1": ("Cam0", "Cam1"),
+    "Cam1_2": ("Cam1", "Cam2")
+}
+
+for pair_folder in PAIR_FOLDERS:
+    os.makedirs(os.path.join(OUTPUT_DIR, pair_folder), exist_ok=True)
 
 # === Global state ===
 frames = {}
-selected_camera = list(CAMERA_DEVICES.keys())[0]  # Default selected camera
+selected_camera = "Cam0_1"  # Default selected camera
 running = True
-img_counters = {name: 0 for name in CAMERA_DEVICES}
+img_counters = {pair: 0 for pair in PAIR_FOLDERS}
 
 # === Capture Thread Function ===
 def camera_thread(cam_name, device_path):
@@ -48,30 +54,32 @@ print("Press [q] to quit")
 
 # === Main Display & Control Loop ===
 while True:
-    frame = frames.get(selected_camera)
-    if frame is not None:
-        display = frame.copy()
-        cv2.putText(display, f"Selected: {selected_camera}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.imshow("Camera Viewer", display)
+    camA, camB = PAIR_FOLDERS[selected_pair]
+    frameA, frameB = frames.get(camA), frames.get(camB)
+
+    if frameA is not None and frameB is not None:
+        combined = cv2.hconcat([frameA, frameB])
+        cv2.putText(combined, f"Pair: {selected_pair}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv2.imshow("Camera Pair Viewer", combined)
 
     key = cv2.waitKey(1) & 0xFF
 
     if key == ord('q'):
         break
     elif key == ord('1'):
-        selected_camera = "Cam0"
+        selected_pair = "Cam0_1"
     elif key == ord('2'):
-        selected_camera = "Cam1"
-    elif key == ord('3'):
-        selected_camera = "Cam2"
-    elif key == ord(' ') and frame is not None:
-        img_idx = img_counters[selected_camera]
-        filename = os.path.join(OUTPUT_DIR, selected_camera, f"image_{img_idx:03d}.jpg")
-        cv2.imwrite(filename, frame)
-        print(f"📸 Saved: {filename}")
-        img_counters[selected_camera] += 1
-
+        selected_pair = "Cam1_2"
+    elif key == ord(' ') and frameA is not None and frameB is not None:
+        idx = img_counters[selected_pair]
+        save_dir = os.path.join(OUTPUT_DIR, selected_pair)
+        filenameA = os.path.join(save_dir, f"{camA}_image_{idx:03d}.jpg")
+        filenameB = os.path.join(save_dir, f"{camB}_image_{idx:03d}.jpg")
+        cv2.imwrite(filenameA, frameA)
+        cv2.imwrite(filenameB, frameB)
+        print(f"📸 Saved pair to {save_dir}:\n - {filenameA}\n - {filenameB}")
+        img_counters[selected_pair] += 1
 # === Cleanup ===
 running = False
 cv2.destroyAllWindows()
