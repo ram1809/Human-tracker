@@ -33,7 +33,13 @@ def camera_thread(cam_name, device_path):
     if not cap.isOpened():
         print(f"❌ Failed to open {device_path} ({cam_name})")
         return
-
+# Set camera properties for better image clarity
+    cap.set(cv2.CAP_PROP_FPS, 30)  # Set FPS to 30 for smoother capture
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)  # Disable autofocus (manual focus needed for sharpness)
+    cap.set(cv2.CAP_PROP_FOCUS, 50)  # Set the focus level (try values between 0-255)
+    cap.set(cv2.CAP_PROP_EXPOSURE, -4)  # Set exposure level (-4 might help reduce blur in bright conditions)
+    cap.set(cv2.CAP_PROP_BRIGHTNESS, 0.5)  # Adjust brightness (range 0 to 1)
+    cap.set(cv2.CAP_PROP_CONTRAST, 0.5)  # Adjust contrast (range 0 to 1)
     while running:
         ret, frame = cap.read()
         if ret:
