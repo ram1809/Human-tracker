@@ -1,11 +1,11 @@
-# Self-Supervised Single Person 3D Human Pose Estimation
+# Self-Supervised single person 3D Human Pose Estimation with Fisheye Stereo Camera
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/ram1809/3D_pose_estimator?style=social)](https://github.com/ram1809/3D_pose_estimator/stargazers)
+[![GitHub Stars](https://img.shields.io/github/stars/ram1809/3D-pose-estimator?style=social)](https://github.com/ram1809/3D-pose-estimator/stargazers)
 
-A portable, self-supervised single person 3D human pose estimation system using a custom fisheye stereo camera rig.
+This repository contains the code and resources for adapting a portable, self-supervised single person 3D human pose estimation system from Rodriguez-Criado et al. (2024) using a custom fisheye stereo camera rig.
 
-![System Overview](images/system_overview.png)
+![System Overview](assets/system_overview.png)
 
 ## Project Overview
 
@@ -28,73 +28,106 @@ This project adapts the state-of-the-art, self-supervised 3D pose estimation sys
 This work provides the perception layer for mobile robots to navigate safely and intelligently around people by enabling:
 
 - **Intent Prediction:** Anticipating human trajectories for smoother path planning.
-
 - **Socially-Aware Movement:** Maintaining a safe distance and respecting personal space.
-
 - **Non-Verbal Interaction:** Understanding body language for more intuitive human-robot interaction.
 
 ## Features
 
-- **Real-time 3D Pose Estimation:** Designed for real-time performance using the high-speed trt-pose 2D detector
-- **Portable Hardware Design:** Self-contained rig is adaptable to mobile robots and dynamic environments
-- **Self-Supervised Learning:** No need for expensive motion capture setups or manual 3D annotations
-- **Fisheye Camera Support:** Includes a complete calibration pipeline for wide-angle lenses
-- **Robust to Occlusions:** The learning-based MLP can estimate complete poses even with partial occlusions
-- **ROS Integration:** Ready-to-use ROS nodes for robotics applications
-- **Visualization Tools:** Includes scripts for both 2D and 3D pose visualization
-
-## Hardware Setup
-
-Our system uses a custom 3D-printed stereo rig with two fisheye cameras:
-
-- 2× 2MP USB cameras with 1/2.7-inch CMOS OV2710 image sensors and 170° fisheye lenses
-- Fixed baseline on a 3D-printed mounting bracket (STL files provided in `/hardware`)
-
-![Hardware Setup](images/hardware_setup.png)
+- **Real-time 3D Pose Estimation:** Designed for real-time performance using the high-speed trt-pose 2D detector.
+- **Portable Hardware Design:** Self-contained rig is adaptable to mobile robots and dynamic environments.
+- **Self-Supervised Learning:** No need for expensive motion capture setups or manual 3D annotations.
+- **Fisheye Camera Support:** Includes a complete calibration pipeline for wide-angle lenses.
+- **Robust to Occlusions:** The learning-based MLP can estimate complete poses even with partial occlusions.
+- **Open Dataset:** Tools provided to generate a custom fisheye camera dataset for training and validation.
+- **ROS Integration:** Ready-to-use ROS nodes for robotics applications.
+- **Visualization Tools:** Includes scripts for both 2D and 3D pose visualization.
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/ram1809/3D_pose_estimator.git
+git clone https://github.com/ram1809/3D-pose-estimator.git
 
 # Navigate to the project directory
-cd 3D_pose_estimator
+cd 3D-pose-estimator
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-## Usage
+## Hardware Setup
 
-### Calibration
+Our system uses a custom 3D-printed stereo rig with two fisheye cameras:
+
+- 2× 2MP USB cameras with 1/2.7-inch CMOS OV2710 image sensors and 170° fisheye lenses.
+- Fixed baseline on a 3D-printed mounting bracket (STL files provided in /hardware).
+
+## Steps
+
+Camera Calibration
+
+A complete re-calibration is necessary for the new fisheye hardware.
+
+    Image Acquisition: Use the provided script to capture synchronized images of a checkerboard target from various angles and distances.
+      <Camera capture code>
+    To find intrinsic and extrinsic parameters:
+          <parameter code>
+       
+Dataset Generation
+
+The models are trained using a custom dataset generated with the self-supervised, single-person recording strategy.
+
+    Record Sequences: Capture video sequences of a single person moving in the environment. Set the Environment variaable "CAMERA_IDENTIFIER" value based on the camera device ID whiile running the below scripts. Along with configuration file.
+
+    Process Data: Run the 2D skeleton detector (trt-pose) on the recorded footage to generate the final .json data files.
+
+Model Training
+The training process is divided into two stages:
+a) Training the Skeleton Matching Network (GNN)
+
+cd skeleton_matching/
+python3 train_skeleton_matching.py --trainset /path/to/train_paths.txt --devset /path/to/dev_paths.txt
+
+b) Training the Pose Estimator Network (MLP)
+cd pose_estimator/
+python3 train_pose_estimator.py --trainset /path/to/train_paths.txt --devset /path/to/dev_paths.txt
+
+Testing and Evaluation
+a) Metrics
+
+Evaluate the trained models on an unseen test set.
+
+    Skeleton Matching (GNN) Metrics:
+
+    python3 sm_metrics_without_gt.py --testfiles /path/to/test_paths.txt --modelsdir /path/to/models/
+
+    3D Pose (MLP) Reprojection Error:
+
+    python3 reprojection_error.py --testfiles /path/to/test_paths.txt --modelsdir /path/to/models/
+
+b) Visualization
+
+Visually inspect the 3D pose estimation results.
+
+    From MLP Model:
+
+    python3 show_results_from_model.py --testfile /path/to/single_test.json --modelsdir /path/to/models/
 
 ```python
-# Run camera calibration
-python scripts/calibrate_cameras.py --config configs/camera_config.yaml
+import pose_estimator
 
-# Verify calibration results
-python scripts/verify_calibration.py --config configs/camera_config.yaml
-```
+# Initialize the stereo camera system
+stereo_system = pose_estimator.StereoSystem()
 
-### Training
+# Calibrate cameras (if not already calibrated)
+stereo_system.calibrate('path/to/calibration/images')
 
-```python
-# Generate self-supervised dataset
-python scripts/generate_dataset.py --config configs/dataset_config.yaml
+# Get 3D pose from stereo images
+left_img, right_img = stereo_system.capture()
+pose_3d = stereo_system.estimate_3d_pose(left_img, right_img)
 
-# Train the GNN for keypoint matching
-python scripts/train_gnn.py --config configs/train_config.yaml
-
-# Train the MLP for 3D pose estimation
-python scripts/train_mlp.py --config configs/train_config.yaml
-```
-
-### Inference
-
-```python
-# Run real-time inference
-python scripts/run_inference.py --config configs/inference_config.yaml
+# Visualize results
+pose_estimator.visualize(left_img, right_img, pose_3d)
 ```
 
 ## Results and Evaluation
@@ -111,33 +144,35 @@ The system was evaluated on a custom test dataset generated with the fisheye ste
 |--------|--------|------------------------------|
 | Camera 0 | MLP Estimation | 8.92 |
 | Camera 0 | Triangulation | 6.42 |
-| Camera 2 | MLP Estimation | 5.73 |
-| Camera 2 | Triangulation | 7.57 |
+| Camera 1 | MLP Estimation | 5.73 |
+| Camera 1 | Triangulation | 7.57 |
+
+![Results Graph](assets/results_graph.png)
 
 ## Documentation
-
-For detailed documentation, please visit the [Wiki](https://github.com/ram1809/3D_pose_estimator/wiki).
+For detailed documentation, please visit [the wiki](https://github.com/ram1809/3D-pose-estimator/wiki).
 
 ## Contributing
-
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This project is licensed under the MIT License - see the (LICENSE) file for details.
+## Citation
+If you use this code in your research, please cite:
+```
+@article{munusamy2025selfpose,
+  title={Self-Supervised 3D Human Pose Estimation with Fisheye Stereo Camera},
+  author={Munusamy, Ram},
+  journal={ArXiv},
+  year={2025}
+}
+```
 
 ## Acknowledgments
-
-- Rodriguez-Criado et al. for the original research on self-supervised 3D pose estimation
-- The robotics lab at Aston University for hardware support
-- Open-source projects: trt-pose, PyTorch, OpenCV, DGL
+- Rodriguez-Criado et al. for the original research on self-supervised 3D pose estimation.
+- The robotics lab for hardware support.
+- Open-source projects: trt-pose, PyTorch, OpenCV, DGL.
 
 ## Contact
-
-- Ram Munusamy - [GitHub](https://github.com/ram1809) - [your.email@example.com]
+Ram Munusamy - [GitHub](https://github.com/ram1809) - ram1809@example.com
