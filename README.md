@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/ram1809/3D-pose-estimator?style=social)](https://github.com/ram1809/3D-pose-estimator/stargazers)
 
-This repository contains the code and resources for adapting a portable, self-supervised single person 3D human pose estimation system from Rodriguez-Criado et al. (2024) using a custom fisheye stereo camera rig.
+This repository contains the code and resources for camrera calibration, adapting a portable, self-supervised single person 3D human pose estimation system from Rodriguez-Criado et al. (2024) using a custom fisheye stereo camera rig.
 
 ![System Overview](assets/system_overview.png)
 
