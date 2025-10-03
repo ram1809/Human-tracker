@@ -63,24 +63,40 @@ Our system uses a custom 3D-printed stereo rig with two fisheye cameras:
 - Fixed baseline on a 3D-printed mounting bracket (STL files provided in /hardware).
 
 ## Steps
+all the files and folders are inside the cloned repository.
 
-Camera Calibration
-
-A complete re-calibration is necessary for the new fisheye hardware.
-
+Image Acquisition: 
+To caputure images for both intrinsic and extrinsic parameter
+    cd camera_calibration/images.py
+    
     Image Acquisition: Use the provided script to capture synchronized images of a checkerboard target from various angles and distances.
-      <Camera capture code>
-    To find intrinsic and extrinsic parameters:
-          <parameter code>
-       
-Dataset Generation
+      
+    To find intrinsic and extrinsic parameters using standard cv2.calibrate module
+        cd camera_calibration/Intrinsic_cam1_cam2.py 
+        cd camera_calibration/extrinsic_cam1_cam2.py 
+
+    To find intrinsic and extrinsic parameters using fisheye module
+        cd camera_calibration/intrinsic_fisheye_calibration.py 
+        cd camera_calibration/extrinsic.py 
+The camera_calibration folder also contains all .npz files required for calibration
+
+Parameter Serialization:
+The file that holds all the intrinsic and extrinsic parameters
+    cd Parameter Serialization/parameters.py
+    
+The file that creats the Pickle file and manages transformation
+cd 3D_multi_pose_estimator/calibration_receiver/SRC/specificworker.py
+
+Dataset Generation:
 
 The models are trained using a custom dataset generated with the self-supervised, single-person recording strategy.
 
     Record Sequences: Capture video sequences of a single person moving in the environment. Set the Environment variaable "CAMERA_IDENTIFIER" value based on the camera device ID whiile running the below scripts. Along with configuration file.
 
     Process Data: Run the 2D skeleton detector (trt-pose) on the recorded footage to generate the final .json data files.
-
+        cd 3D_multi_pose_estimator/tracker_camera
+    The file that holds the configuration is inside etc/config
+    
 Model Training
 The training process is divided into two stages:
 a) Training the Skeleton Matching Network (GNN)
@@ -113,23 +129,6 @@ Visually inspect the 3D pose estimation results.
 
     python3 show_results_from_model.py --testfile /path/to/single_test.json --modelsdir /path/to/models/
 
-```python
-import pose_estimator
-
-# Initialize the stereo camera system
-stereo_system = pose_estimator.StereoSystem()
-
-# Calibrate cameras (if not already calibrated)
-stereo_system.calibrate('path/to/calibration/images')
-
-# Get 3D pose from stereo images
-left_img, right_img = stereo_system.capture()
-pose_3d = stereo_system.estimate_3d_pose(left_img, right_img)
-
-# Visualize results
-pose_estimator.visualize(left_img, right_img, pose_3d)
-```
-
 ## Results and Evaluation
 
 The system was evaluated on a custom test dataset generated with the fisheye stereo rig.
@@ -147,27 +146,6 @@ The system was evaluated on a custom test dataset generated with the fisheye ste
 | Camera 1 | MLP Estimation | 5.73 |
 | Camera 1 | Triangulation | 7.57 |
 
-![Results Graph](assets/results_graph.png)
-
-## Documentation
-For detailed documentation, please visit [the wiki](https://github.com/ram1809/3D-pose-estimator/wiki).
-
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Citation
-If you use this code in your research, please cite:
-```
-@article{munusamy2025selfpose,
-  title={Self-Supervised 3D Human Pose Estimation with Fisheye Stereo Camera},
-  author={Munusamy, Ram},
-  journal={ArXiv},
-  year={2025}
-}
-```
 
 ## Acknowledgments
 - Rodriguez-Criado et al. for the original research on self-supervised 3D pose estimation.
